@@ -269,7 +269,7 @@ jobs:
     name: Semantic Release Images and Artifacts
     runs-on: ubuntu-22.04
     needs: [merge, refs]
-    if: always() && needs.refs.outputs.new_release == 'true' && (github.ref == 'refs/heads/main' || github.ref_name == 'alpha')
+    #if: always() && needs.refs.outputs.new_release == 'true' && (github.ref == 'refs/heads/main' || github.ref_name == 'alpha')
     steps:
       - name: Source checkout
         uses: actions/checkout@v4
