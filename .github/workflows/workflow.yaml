@@ -468,18 +468,18 @@ jobs:
         with:
           name: ${{ env.APP_NAME }}_${{ needs.refs.outputs.version }}
           path: output/${{ needs.refs.outputs.version }}
-      - name: Run Semantic Release
-        id: semantic
-        uses: cycjimmy/semantic-release-action@v4
-        with:
-          dry_run: false
-          semantic_version: 21
-          extra_plugins: |
-          #  @semantic-release/changelog
-          #  @semantic-release/git
-            conventional-changelog-conventionalcommits@7
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #- name: Run Semantic Release
+      #  id: semantic
+      #  uses: cycjimmy/semantic-release-action@v4
+      #  with:
+      #    dry_run: false
+      #    semantic_version: 21
+      #    extra_plugins: |
+      #      @semantic-release/changelog
+      #      @semantic-release/git
+      #      conventional-changelog-conventionalcommits@7
+      #  env:
+      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Echo Semantic Release Versions
         if: steps.semantic.outputs.new_release_published == 'true'
         run: |
