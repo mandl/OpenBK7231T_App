@@ -332,6 +332,7 @@
 #define ENABLE_MQTT								1
 #define ENABLE_TASMOTADEVICEGROUPS				1
 #define ENABLE_NTP								1
+#define ENABLE_CALENDAR_EVENTS                  1
 //#define ENABLE_NTP_DST						1
 #define ENABLE_DRIVER_BL0937					1
 #define ENABLE_DRIVER_LED 						1
