@@ -12,6 +12,8 @@
 #define OBK_VARIANT_SENSORS						5
 #define OBK_VARIANT_HLW8112						6
 #define OBK_VARIANT_BATTERY						7
+#define OBK_VARIANT_BTPROXY						8
+#define OBK_VARIANT_XR806_DCDC					9
 #define OBK_VARIANT_ESP2M						1
 #define OBK_VARIANT_ESP4M						2
 #define OBK_VARIANT_ESP2M_BERRY					3
@@ -33,11 +35,16 @@
 #define ENABLE_HTTP_PING						1
 #define ENABLE_LED_BASIC						1
 
+// for debugging: Enable logging startup to LFS (only if LFS is present)
+#if ENABLE_LITTLEFS
+//#define ENABLE_LOG2LFS						1
+#endif
+
+
 #if PLATFORM_XRADIO
 
 // #define ENABLE_SEND_POSTANDGET				1
 #define ENABLE_MQTT								1
-#define NO_CHIP_TEMPERATURE						1
 #define ENABLE_HA_DISCOVERY						1
 #define ENABLE_EXPAND_CONSTANT					1
 #define ENABLE_OBK_SCRIPTING					1
@@ -50,11 +57,13 @@
 #define ENABLE_NTP								1
 #define ENABLE_DRIVER_WEMO						1
 #define ENABLE_DRIVER_HUE						1
+#define ENABLE_DRIVER_TINYIR_NEC				1
 
 #if PLATFORM_XR809
 #define ENABLE_DRIVER_BATTERY					1
 #define ENABLE_OBK_BERRY						1
 #define ENABLE_DRIVER_TUYAMCU					1
+#define NO_CHIP_TEMPERATURE						1
 #endif
 
 #if PLATFORM_XR806
@@ -63,7 +72,13 @@
 #define ENABLE_DRIVER_DHT						1
 #define ENABLE_DRIVER_AHT2X						1
 #define ENABLE_DRIVER_SSDP						1
+#define ENABLE_DRIVER_SM16703P					1
+#define ENABLE_DRIVER_PIXELANIM					1
 #define ENABLE_OBK_BERRY						1
+#define ENABLE_DRIVER_MDNS						1
+#define ENABLE_DRIVER_IR						1
+#define ENABLE_DRIVER_BATTERY					1
+//#define ENABLE_DRIVER_IRREMOTEESP				1
 #endif
 
 #elif PLATFORM_W600
@@ -83,10 +98,12 @@
 #define ENABLE_OBK_SCRIPTING					1
 #define ENABLE_ADVANCED_CHANNELTYPES_DISCOVERY	1
 #define ENABLE_LITTLEFS							1
+#define ENABLE_DRIVER_MDNS						1
 //#define ENABLE_DRIVER_TUYAMCU					1
 //#define ENABLE_DRIVER_SM16703P					1
 //#define ENABLE_DRIVER_PIXELANIM					1
 #undef ENABLE_HTTP_MAC
+//#define ENABLE_DRIVER_DCF77					1
 
 #elif PLATFORM_W800
 
@@ -110,13 +127,17 @@
 #define ENABLE_OBK_BERRY						1
 #define ENABLE_ADVANCED_CHANNELTYPES_DISCOVERY	1
 #define ENABLE_LITTLEFS							1
+#define ENABLE_DRIVER_MDNS						1
 #define NEW_TCP_SERVER							1
-#define ENABLE_DRIVER_NEO6M						1
+//#define ENABLE_DRIVER_NEO6M						1
 #define ENABLE_TIME_SUNRISE_SUNSET				1
 #define ENABLE_TIME_DST							1
 #define ENABLE_DRIVER_LTR_ALS					1
 #define ENABLE_DRIVER_SM16703P					1
 #define ENABLE_DRIVER_PIXELANIM					1
+#define ENABLE_DRIVER_TINYIR_NEC				1
+// allow testing, remove before merging
+//#define ENABLE_DRIVER_DCF77					1
 
 #elif WINDOWS
 
@@ -196,6 +217,8 @@
 #define ENABLE_OBK_BERRY						1
 #define ENABLE_DRIVER_DS1820_FULL				1
 #define ENABLE_DRIVER_DMX						1
+#define ENABLE_DRIVER_MQTTSERVER				1
+//#define ENABLE_DRIVER_ARISTON					1
 
 #elif PLATFORM_BL602
 
@@ -214,6 +237,7 @@
 #define ENABLE_DRIVER_WEMO						1
 #define ENABLE_DRIVER_FREEZE					0
 #define ENABLE_DRIVER_DHT						1
+#define ENABLE_DRIVER_BRIDGE					1
 // parse things like $CH1 or $hour etc
 #define ENABLE_EXPAND_CONSTANT					1
 #define ENABLE_TASMOTA_JSON						1
@@ -222,10 +246,14 @@
 #define ENABLE_DRIVER_CHT83XX					1
 #define ENABLE_DRIVER_DS1820					1
 #define ENABLE_OBK_SCRIPTING					1
+#define ENABLE_DRIVER_MDNS						1
 // #define ENABLE_I2C							1
 #define ENABLE_ADVANCED_CHANNELTYPES_DISCOVERY	1
 #define ENABLE_DRIVER_SM16703P					1
 #define ENABLE_DRIVER_PIXELANIM					1
+#if PLATFORM_BL_NEW
+#define NEW_TCP_SERVER							1
+#endif
 
 #if (OBK_VARIANT == OBK_VARIANT_BERRY)
 #define ENABLE_OBK_BERRY						1
@@ -239,7 +267,10 @@
 //#undef ENABLE_DRIVER_BL0942
 #define ENABLE_DRIVER_IRREMOTEESP				1
 //#endif
-#define ENABLE_DRIVER_NEO6M					1
+//#define ENABLE_DRIVER_NEO6M						1
+#define ENABLE_DRIVER_TINYIR_NEC				1
+// allow testing, remove before merging
+//#define ENABLE_DRIVER_DCF77					1
 
 #elif PLATFORM_BEKEN
 
@@ -250,6 +281,7 @@
 
 //#define	ENABLE_DRIVER_SSD1306					1
 
+#define ENABLE_DRIVER_SHUTTERS					1
 // #define	ENABLE_DRIVER_PIR					1
 //#define ENABLE_DRIVER_BKPARTITIONS				1
 #define ENABLE_HA_DISCOVERY						1
@@ -300,6 +332,9 @@
 // #define ENABLE_DRIVER_BMPI2C					1
 #define ENABLE_DRIVER_DDP						1
 #define ENABLE_DRIVER_SSDP						1
+#if PLATFORM_BK7231N || PLATFORM_BK7231T || PLATFORM_BK7238
+#define ENABLE_DRIVER_MDNS						1
+#endif
 #define ENABLE_DRIVER_IR						1
 #define ENABLE_DRIVER_RC						1
 // #define ENABLE_DRIVER_IR2					1
@@ -312,7 +347,9 @@
 #if PLATFORM_BEKEN_NEW
 #define NEW_TCP_SERVER							1
 #endif
-//#define ENABLE_DRIVER_NEO6M						1
+//#define ENABLE_DRIVER_NEO6M					1
+//#define ENABLE_DRIVER_ARISTON					1
+//#define ENABLE_DRIVER_ROOMBA				    1
 
 // ENABLE_I2C_ is a syntax for
 // our I2C system defines for drv_i2c_main.c
@@ -372,6 +409,7 @@
 #undef ENABLE_DRIVER_BL0942SPI
 #undef ENABLE_DRIVER_CSE7766
 #endif
+//#define ENABLE_DRIVER_DCF77					1
 
 #if (OBK_VARIANT == OBK_VARIANT_BATTERY)
 #undef ENABLE_DRIVER_BMP280
@@ -383,6 +421,11 @@
 #undef ENABLE_DRIVER_NEO6M
 #undef ENABLE_DRIVER_HTTPBUTTONS
 #undef ENABLE_DRIVER_KP18058
+#endif
+
+#if (OBK_VARIANT == OBK_VARIANT_BTPROXY)
+#define ENABLE_BT_PROXY							1
+#define ENABLE_DRIVER_ESPHOME_API				1
 #endif
 
 #elif PLATFORM_LN882H
@@ -409,12 +452,21 @@
 #define ENABLE_DRIVER_DS1820					1
 #define ENABLE_OBK_SCRIPTING					1
 #define ENABLE_DRIVER_SSDP						1
+#define ENABLE_DRIVER_MDNS						1
 #define ENABLE_ADVANCED_CHANNELTYPES_DISCOVERY	1
 //#define ENABLE_OBK_BERRY						1
 #define ENABLE_DRIVER_SM16703P					1
 #define ENABLE_DRIVER_PIXELANIM					1
 #define ENABLE_DRIVER_IRREMOTEESP				1
 #define ENABLE_DRIVER_TUYAMCU					1
+#define ENABLE_DRIVER_TINYIR_NEC				1
+// allow testing, remove before merging
+//#define ENABLE_DRIVER_DCF77					1
+
+#if (OBK_VARIANT == OBK_VARIANT_BTPROXY)
+#define ENABLE_BT_PROXY							1
+#define ENABLE_DRIVER_ESPHOME_API				1
+#endif
 
 #elif PLATFORM_ESPIDF
 
@@ -441,6 +493,7 @@
 #define ENABLE_TASMOTA_JSON						1
 #define ENABLE_CALENDAR_EVENTS					1
 #define ENABLE_DRIVER_DDP						1
+//#define ENABLE_DRIVER_ARISTON					1
 #define ENABLE_DRIVER_SSDP						1
 #define ENABLE_DRIVER_CHT83XX					1
 //#define ENABLE_DRIVER_CSE7761					1
@@ -448,6 +501,7 @@
 #define ENABLE_ADVANCED_CHANNELTYPES_DISCOVERY	1
 #define ENABLE_DRIVER_SM16703P					1
 #define ENABLE_DRIVER_PIXELANIM					1
+#define ENABLE_DRIVER_TINYIR_NEC				1
 
 #if (OBK_VARIANT == OBK_VARIANT_ESP4M || OBK_VARIANT == OBK_VARIANT_ESP2M_BERRY)
 #define ENABLE_OBK_BERRY						1
@@ -456,7 +510,9 @@
 #if (OBK_VARIANT == OBK_VARIANT_ESP4M)
 #define ENABLE_DRIVER_TCA9554					1
 #define ENABLE_DRIVER_DMX						1
+#define ENABLE_DRIVER_MQTTSERVER				1
 #endif
+//#define ENABLE_DRIVER_DCF77					1
 
 #elif PLATFORM_TR6260
 
@@ -477,6 +533,9 @@
 #define ENABLE_OBK_SCRIPTING					1
 #define ENABLE_ADVANCED_CHANNELTYPES_DISCOVERY	1
 #define ENABLE_OBK_BERRY						1
+#define ENABLE_DRIVER_TINYIR_NEC				1
+
+//#define ENABLE_DRIVER_DCF77					1
 
 #elif PLATFORM_REALTEK
 
@@ -510,9 +569,12 @@
 #define ENABLE_DRIVER_TCL						1
 #define ENABLE_DRIVER_SM16703P					1
 #define ENABLE_DRIVER_PIXELANIM					1
+#define ENABLE_DRIVER_TINYIR_NEC				1
+
+//#define ENABLE_DRIVER_DCF77					1
 
 #ifndef PLATFORM_RTL8710B
-#define ENABLE_OBK_BERRY						1
+//#define ENABLE_OBK_BERRY						1
 #endif
 
 #if PLATFORM_RTL87X0C || PLATFORM_REALTEK_NEW || PLATFORM_RTL8720D
@@ -522,6 +584,18 @@
 
 #if PLATFORM_RTL8720E
 #undef NO_CHIP_TEMPERATURE
+#endif
+
+#if PLATFORM_RTL8720D || PLATFORM_RTL8721DA
+#define ENABLE_BT_PROXY							1
+#define ENABLE_DRIVER_ESPHOME_API				1
+#endif
+
+#if PLATFORM_RTL87X0C && (OBK_VARIANT == OBK_VARIANT_BTPROXY)
+#undef ENABLE_OBK_BERRY
+#undef ENABLE_DRIVER_IRREMOTEESP
+#define ENABLE_BT_PROXY							1
+#define ENABLE_DRIVER_ESPHOME_API				1
 #endif
 
 #elif PLATFORM_ECR6600
@@ -550,6 +624,8 @@
 #define ENABLE_DRIVER_BL0942					1
 #define ENABLE_DRIVER_BL0937					1
 #define ENABLE_OBK_BERRY						1
+
+//#define ENABLE_DRIVER_DCF77					1
 
 #elif PLATFORM_ESP8266
 
@@ -582,6 +658,9 @@
 #define ENABLE_DRIVER_SSDP						1
 #define ENABLE_DRIVER_DS1820					1
 #define ENABLE_DRIVER_TUYAMCU					1
+#define ENABLE_DRIVER_MDNS						1
+
+//#define ENABLE_DRIVER_DCF77					1
 
 // #define ENABLE_OBK_BERRY						1
 
@@ -628,6 +707,46 @@
 #define ENABLE_DRIVER_SSDP						1
 #define ENABLE_ADVANCED_CHANNELTYPES_DISCOVERY	1
 #define ENABLE_DRIVER_IRREMOTEESP				1
+#define ENABLE_DRIVER_TINYIR_NEC				1
+
+#elif PLATFORM_BL616
+
+#define ENABLE_EXPAND_CONSTANT					1
+#define ENABLE_HA_DISCOVERY						1
+#define ENABLE_MQTT								1
+#define ENABLE_OBK_SCRIPTING					1
+#define ENABLE_ADVANCED_CHANNELTYPES_DISCOVERY	1
+#define NEW_TCP_SERVER							1
+#define ENABLE_LITTLEFS							1
+#define ENABLE_DRIVER_LED 						1
+#define ENABLE_TEST_COMMANDS					1
+#define ENABLE_TASMOTA_JSON						1
+#define ENABLE_DRIVER_SSDP						1
+#define ENABLE_DRIVER_TINYIR_NEC				1
+#define ENABLE_DRIVER_SM16703P					1
+#define ENABLE_DRIVER_PIXELANIM					1
+
+#elif PLATFORM_GD32VW553
+
+#define ENABLE_EXPAND_CONSTANT					1
+#define ENABLE_HA_DISCOVERY						1
+#define ENABLE_MQTT								1
+#define ENABLE_OBK_SCRIPTING					1
+#define ENABLE_ADVANCED_CHANNELTYPES_DISCOVERY	1
+#define NEW_TCP_SERVER							1
+#define ENABLE_LITTLEFS							1
+#define ENABLE_DRIVER_LED 						1
+//#define ENABLE_TEST_COMMANDS					1
+#define ENABLE_TASMOTA_JSON						1
+#define ENABLE_DRIVER_SSDP						1
+#define ENABLE_DRIVER_MDNS						1
+#define ENABLE_DRIVER_SM16703P					1
+#define ENABLE_DRIVER_PIXELANIM					1
+#define ENABLE_DRIVER_TINYIR_NEC				1
+//#define ENABLE_DRIVER_IRREMOTEESP				1
+#define ENABLE_DRIVER_TUYAMCU					1
+//#define ENABLE_BT_PROXY							1
+//#define ENABLE_DRIVER_ESPHOME_API				1
 
 #else
 
@@ -655,6 +774,13 @@
 #if ENABLE_DRIVER_IRREMOTEESP
 #undef ENABLE_DRIVER_IR
 #endif
+
+
+// ensure no log2lfs without LFS present
+#if ! ENABLE_LITTLEFS
+#undef ENABLE_LOG2LFS
+#endif
+
 
 // closing OBK_CONFIG_H
 #endif

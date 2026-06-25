@@ -1,15 +1,24 @@
 OBK_DIR = ../../../../..
 
-CFLAGS += -DPLATFORM_RTL87X0C -DPLATFORM_REALTEK
+CFLAGS += -DPLATFORM_RTL87X0C -DPLATFORM_REALTEK -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types -Wno-error=return-mismatch -Wno-error=int-conversion -Wno-error=changes-meaning
+CFLAGS += -DENABLE_DRIVER_MDNS=1 -DLWIP_MDNS_RESPONDER=1
+
+# GAITEK AC custom UART driver
+CFLAGS += -DENABLE_DRIVER_GAITEKAC=1
+
+# Ensure our lwIP option wrapper is picked before SDK lwipopts.h.
+INCLUDES := -I$(OBK_DIR)/platforms/RTL87X0C $(INCLUDES)
 
 INCLUDES += -I$(OBK_DIR)/libraries/easyflash/inc
 
 SRC_C  += ../../../../../platforms/RTL87X0C/main.c
+SRC_C  += ../../../component/common/network/lwip/lwip_$(LWIP_VERSION)/src/apps/mdns/mdns.c
 
 #SRC_C  += $(OBK_DIR)/src/hal/realtek/rtl87x0c/hal_adc_rtl87x0c.c
 #SRC_C  += $(OBK_DIR)/src/hal/realtek/rtl87x0c/hal_main_rtl87x0c.c
 SRC_C  += $(OBK_DIR)/src/hal/realtek/rtl87x0c/hal_pins_rtl87x0c.c
 SRC_C  += $(OBK_DIR)/src/hal/realtek/rtl87x0c/hal_uart_rtl87x0c.c
+SRC_C  += $(OBK_DIR)/src/hal/realtek/rtl8720d/hal_bt_proxy_rtl8720d.c
 SRC_C  += $(OBK_DIR)/src/hal/realtek/hal_flashConfig_realtek.c
 SRC_C  += $(OBK_DIR)/src/hal/realtek/hal_flashVars_realtek.c
 SRC_C  += $(OBK_DIR)/src/hal/realtek/hal_generic_realtek.c
@@ -21,6 +30,10 @@ SRC_C  += $(OBK_DIR)/src/hal/realtek/hal_ota_realtek.c
 OBK_SRCS = $(OBK_DIR)/src/
 include $(OBK_DIR)/platforms/obk_main.mk
 SRC_C += $(OBKM_SRC)
+
+# GAITEK AC custom UART driver source
+SRC_C += $(OBK_DIR)/src/driver/drv_gaitekAC.c
+
 SRC_CPP += $(OBKM_SRC_CXX)
 CFLAGS += $(OBK_CFLAGS) -D__FILE__=\"\" -Wno-builtin-macro-redefined
 CPPFLAGS += $(INCLUDES) -fpermissive

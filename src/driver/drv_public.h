@@ -77,6 +77,8 @@ void DRV_DGR_OnLedFinalColorsChange(byte rgbcw[5]);
 
 // OBK_POWER etc
 float DRV_GetReading(energySensor_t type);
+int BL_HasEnergySensorReadingEx(int asensdatasetix, energySensor_t type);
+int BL_HasEnergySensorReading(energySensor_t type);
 energySensorNames_t* DRV_GetEnergySensorNames(energySensor_t type);
 energySensorNames_t* DRV_GetEnergySensorNamesEx(int asensdatasetix, energySensor_t type);
 bool DRV_IsMeasuringPower();
@@ -87,6 +89,7 @@ bool DRV_IsSensor();
 void TuyaMCU_OnRGBCWChange(const float *rgbcw, int bLightEnableAll, int iLightMode, float brightnessRange01, float temperatureRange01);
 bool TuyaMCU_IsLEDRunning();
 
+void Shutter_MoveByIndex(int index, float frac, bool bStopOnDuplicate);
 
 #endif /* __DRV_PUBLIC_H__ */
 

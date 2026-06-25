@@ -565,7 +565,7 @@ void HAL_PIN_PWM_Start(int index, int freq)
 		pwm_deinit();
 		ledc_fade_func_install(0);
 #endif
-		ADDLOG_INFO(LOG_FEATURE_PINS, "init ledc ch %i pin %i\n", freecha, pin->pin);
+		ADDLOG_INFO(LOG_FEATURE_PINS, "init ledc ch %i pin %i", freecha, pin->pin);
 	}
 	else
 	{
@@ -634,8 +634,11 @@ void HAL_AttachInterrupt(int pinIndex, OBKInterruptType mode, OBKInterruptHandle
 	if (mode == INTERRUPT_RISING) {
 		esp_mode = GPIO_INTR_POSEDGE;
 	}
-	else {
+	else if (mode == INTERRUPT_FALLING) {
 		esp_mode = GPIO_INTR_NEGEDGE;
+	}
+	else {
+		esp_mode = GPIO_INTR_ANYEDGE;
 	}
 	ESP_ConfigurePin(esp_cf->pin, GPIO_MODE_INPUT, true, false, esp_mode);
 	gpio_isr_handler_add(esp_cf->pin, ESP_Interrupt, (void*)pinIndex);

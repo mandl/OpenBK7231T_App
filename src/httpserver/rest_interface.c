@@ -10,10 +10,13 @@
 #include "../hal/hal_flashVars.h"
 #include "../littlefs/our_lfs.h"
 #include "lwip/sockets.h"
+#if ENABLE_BT_PROXY
+#include "../hal/hal_bt_proxy.h"
+#endif
 
 #define DEFAULT_FLASH_LEN 0x200000
 
-#if PLATFORM_RTL8710A
+#if PLATFORM_RTL8710A || PLATFORM_GD32VW553
 #undef DEFAULT_FLASH_LEN
 #define DEFAULT_FLASH_LEN 0x400000
 #elif PLATFORM_RTL8720D || PLATFORM_REALTEK_NEW
@@ -64,6 +67,7 @@ static int http_rest_get_flash_advanced(http_request_t* request);
 static int http_rest_post_flash_advanced(http_request_t* request);
 
 static int http_rest_get_info(http_request_t* request);
+static int http_rest_get_bt_scan(http_request_t* request);
 
 static int http_rest_post_channels(http_request_t* request);
 static int http_rest_get_channels(http_request_t* request);
@@ -153,6 +157,11 @@ static int http_rest_get(http_request_t* request) {
 	if (!strcmp(request->url, "api/info")) {
 		return http_rest_get_info(request);
 	}
+#if ENABLE_BT_PROXY
+	if (!strcmp(request->url, "api/bt_scan")) {
+		return http_rest_get_bt_scan(request);
+	}
+#endif
 
 	if (!strncmp(request->url, "api/flash/", 10)) {
 		return http_rest_get_flash_advanced(request);
@@ -190,6 +199,9 @@ static int http_rest_post(http_request_t* request) {
 	}
 	if (!strcmp(request->url, "api/ota")) {
 		OTA_IncrementProgress(1);
+#if ENABLE_BT_PROXY
+		HAL_BTProxy_StopScan();
+#endif
 		int r = 0;
 #if PLATFORM_BEKEN
 		r = http_rest_post_flash(request, START_ADR_OF_BK_PARTITION_OTA, LFS_BLOCKS_END);
@@ -197,7 +209,7 @@ static int http_rest_post(http_request_t* request) {
 		r = http_rest_post_flash(request, -1, -1);
 #elif PLATFORM_W800
 		r = http_rest_post_flash(request, -1, -1);
-#elif PLATFORM_BL602
+#elif PLATFORM_BL602 || PLATFORM_BL_NEW
 		r = http_rest_post_flash(request, -1, -1);
 #elif PLATFORM_LN882H || PLATFORM_LN8825
 		r = http_rest_post_flash(request, -1, -1);
@@ -212,6 +224,8 @@ static int http_rest_post(http_request_t* request) {
 #elif PLATFORM_TXW81X
 		r = http_rest_post_flash(request, 0, -1);
 #elif PLATFORM_RDA5981
+		r = http_rest_post_flash(request, 0, -1);
+#elif PLATFORM_GD32VW553
 		r = http_rest_post_flash(request, 0, -1);
 #else
 		// TODO
@@ -278,9 +292,14 @@ static int http_rest_post(http_request_t* request) {
 
 static int http_rest_app(http_request_t* request) {
 	const char* webhost = CFG_GetWebappRoot();
-	const char* ourip = HAL_GetMyIPString(); //CFG_GetOurIP();
+//	const char* ourip = HAL_GetMyIPString(); //CFG_GetOurIP();
 	http_setup(request, httpMimeTypeHTML);
-	if (webhost && ourip) {
+//	if (webhost && ourip) {
+// we don't need to rely on any function here for our IP.
+// If this code is used, someone is accessing the webif, so we
+// know our ip (and port) inside the browser (JS "location").
+// Knowing/using the port from location.host is very usefull e.g. in simulator ;-) 
+	if (webhost) {
 		poststr(request, htmlDoctype);
 
 		poststr(request, "<head><title>");
@@ -289,7 +308,7 @@ static int http_rest_app(http_request_t* request) {
 
 		poststr(request, htmlShortcutIcon);
 		poststr(request, htmlHeadMeta);
-		hprintf255(request, "<script>var root='%s',device='http://%s';</script>", webhost, ourip);
+		hprintf255(request, "<script>var root='%s',device='http://'+location.host;</script>", webhost);
 		hprintf255(request, "<script src='%s/startup.js'></script>", webhost);
 		poststr(request, "</head><body></body></html>");
 	}
@@ -1055,6 +1074,22 @@ static int http_rest_get_info(http_request_t* request) {
 	poststr(request, NULL);
 	return 0;
 }
+
+#if ENABLE_BT_PROXY
+static int http_rest_get_bt_scan(http_request_t* request) {
+	int init_done = 0;
+	int scan_active = 0;
+	int total_packets = 0;
+	int dropped_packets = 0;
+
+	HAL_BTProxy_GetScanStats(&init_done, &scan_active, &total_packets, &dropped_packets);
+	http_setup(request, httpMimeTypeJson);
+	hprintf255(request, "{\"init\":%d,\"scan\":%d,\"total\":%d,\"dropped\":%d}",
+		init_done, scan_active, total_packets, dropped_packets);
+	poststr(request, NULL);
+	return 0;
+}
+#endif
 
 static int http_rest_post_pins(http_request_t* request) {
 	int i;

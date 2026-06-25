@@ -262,8 +262,7 @@ void LED_I2CDriver_WriteRGBCW(float* finalRGBCW) {
 			// the format is RGBCW
 			// Emulate C with RGB
 			LED_CalculateEmulatedCool(finalRGBCW[3], finalRGBCW);
-			// C is unused
-			finalRGBCW[3] = 0;
+			// keep C unchanged, because it is the lerp value for emulated cool LED
 			// keep W unchanged
 		}
 	}
@@ -339,10 +338,16 @@ void LED_RunQuickColorLerp(int deltaMS) {
 	}
 
 	for(i = 0; i < 5; i++) {
-		float ch_rgb_cal = (i < 3)? rgb_used_corr[i] : 1.0f; // adjust change rate with RGB correction in use
-		// This is the most silly and primitive approach, but it works
-		// In future we might implement better lerp algorithms, use HUE, etc
-		led_rawLerpCurrent[i] = Mathf_MoveTowards(led_rawLerpCurrent[i],finalColors[i], deltaSeconds * led_lerpSpeedUnitsPerSecond * ch_rgb_cal);
+		// Directional lerp: apply rgb calibration correction to the step size only when ramping UP.
+		// This keeps channels visually tracking together during fade-in (corrected channel raw value
+		// moves faster to compensate for the cal multiply applied at output time).
+		// When ramping DOWN we use a plain (uncorrected) step so all channels converge to their
+		// target at the same rate - preventing a lower-calibrated channel from lingering visible
+		// after others have reached zero (e.g. red staying on after green/blue go dark).
+		float ch_rgb_cal = (i < 3) ? rgb_used_corr[i] : 1.0f;
+		float bRampingUp = (led_rawLerpCurrent[i] < finalColors[i]) ? 1.0f : 0.0f;
+		float directedCal = 1.0f + (ch_rgb_cal - 1.0f) * bRampingUp; // = ch_rgb_cal when up, = 1.0 when down
+		led_rawLerpCurrent[i] = Mathf_MoveTowards(led_rawLerpCurrent[i], finalColors[i], deltaSeconds * led_lerpSpeedUnitsPerSecond * directedCal);
 	}
 
 	target_value_cold_or_warm = LED_GetTemperature0to1Range() * 100.0f;
@@ -366,7 +371,15 @@ void LED_RunQuickColorLerp(int deltaMS) {
 			// So, we need to map. Map component 3 of RGBCW to first channel, and component 4 to second.
 			CHANNEL_Set_FloatPWM(firstChannelIndex + 0, led_rawLerpCurrent[3] * g_cfg_colorScaleToChannel, CHANNEL_SET_FLAG_SKIP_MQTT | CHANNEL_SET_FLAG_SILENT);
 			CHANNEL_Set_FloatPWM(firstChannelIndex + 1, led_rawLerpCurrent[4] * g_cfg_colorScaleToChannel, CHANNEL_SET_FLAG_SKIP_MQTT | CHANNEL_SET_FLAG_SILENT);
-		} else {
+		}
+#if	ENABLE_DRIVER_SM16703P
+		else if (pixel_count > 0 && (g_lightMode != Light_Anim || g_lightEnableAll == 0)) {
+			// Not CW mode (not WS2812+ CW), but WS2812 + single PWM
+			CHANNEL_Set_FloatPWM(firstChannelIndex + 0, 
+				led_rawLerpCurrent[4] * g_cfg_colorScaleToChannel, CHANNEL_SET_FLAG_SKIP_MQTT | CHANNEL_SET_FLAG_SILENT);
+		}
+#endif
+		else {
 			// This should work for both RGB and RGBCW
 			// This also could work for a SINGLE COLOR strips
 			for(i = 0; i < maxPossibleIndexToSet; i++) {
@@ -638,7 +651,16 @@ void apply_smart_light() {
 					else if (i == 4) {
 						CHANNEL_Set_FloatPWM(firstChannelIndex + 1, chVal, CHANNEL_SET_FLAG_SKIP_MQTT | CHANNEL_SET_FLAG_SILENT);
 					}
-				} else {
+				}
+#if	ENABLE_DRIVER_SM16703P
+				else if (pixel_count > 0 && (g_lightMode != Light_Anim || g_lightEnableAll == 0)) {
+					// Not CW mode (not WS2812+ CW), but WS2812 + single PWM
+					if (i == 4) {
+						CHANNEL_Set_FloatPWM(firstChannelIndex + 0, chVal, CHANNEL_SET_FLAG_SKIP_MQTT | CHANNEL_SET_FLAG_SILENT);
+					}
+				}
+#endif
+				else {
 					// emulated cool is -1 by default, so this block will only execute
 					// if the cool emulation was enabled
 					if (channelToUse == emulatedCool && g_lightMode == Light_Temperature) {
@@ -689,9 +711,9 @@ void apply_smart_light() {
 
 void led_gamma_list (void) { // list RGB gamma settings
 	led_gamma_enable_channel_messages = 1;
-	addLogAdv (LOG_INFO, LOG_FEATURE_CFG, "RGB  cal %f %f %f",
+	addLogAdv (LOG_INFO, LOG_FEATURE_CFG, "RGB cal %f %f %f",
 		g_cfg.led_corr.rgb_cal[0], g_cfg.led_corr.rgb_cal[1], g_cfg.led_corr.rgb_cal[2]);
-	addLogAdv (LOG_INFO, LOG_FEATURE_CFG, "LED  gamma %.2f  brtMinRGB %.2f%%  brtMinCW %.2f%%",
+	addLogAdv (LOG_INFO, LOG_FEATURE_CFG, "LED gamma %.2f brtMinRGB %.2f%% brtMinCW %.2f%%",
 		g_cfg.led_corr.led_gamma, g_cfg.led_corr.rgb_bright_min, g_cfg.led_corr.cw_bright_min);
 }
 
@@ -890,15 +912,17 @@ static commandResult_t temperature(const void *context, const char *cmd, const c
 	int tmp;
 	//if (!wal_strnicmp(cmd, "POWERALL", 8)){
 
+	Tokenizer_TokenizeString(args, 0);
+
         ADDLOG_DEBUG(LOG_FEATURE_CMD, " temperature (%s) received with args %s",cmd,args);
+	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 1)) {
+		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+	}
 
-		Tokenizer_TokenizeString(args, 0);
 
-		tmp = Tokenizer_GetArgInteger(0);
-
-		LED_SetTemperature(tmp, 1);
-
-		return CMD_RES_OK;
+	tmp = Tokenizer_GetArgInteger(0);
+	LED_SetTemperature(tmp, 1);
+	return CMD_RES_OK;
 	//}
 	//return 0;
 }
@@ -972,6 +996,9 @@ static commandResult_t enableAll(const void *context, const char *cmd, const cha
         ADDLOG_DEBUG(LOG_FEATURE_CMD, " enableAll (%s) received with args %s",cmd,args);
 
 		Tokenizer_TokenizeString(args, 0);
+		if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 1)) {
+			return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+		}
 
 		a = Tokenizer_GetArg(0);
 		if (a && !stricmp(a, "toggle")) {
@@ -1156,6 +1183,9 @@ static commandResult_t add_temperature(const void *context, const char *cmd, con
 	int bWrapAroundInsteadOfHold;
 
 	Tokenizer_TokenizeString(args, 0);
+	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 2)) {
+		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+	}
 
 	iVal = Tokenizer_GetArgInteger(0);
 	bWrapAroundInsteadOfHold = Tokenizer_GetArgInteger(1);
@@ -1169,9 +1199,12 @@ static commandResult_t add_dimmer(const void *context, const char *cmd, const ch
 	int addMode;
 
 	Tokenizer_TokenizeString(args, 0);
+	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 1)) {
+		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+	}
 
 	iVal = Tokenizer_GetArgInteger(0);
-	addMode = Tokenizer_GetArgInteger(1);
+	addMode = Tokenizer_GetArgIntegerDefault(1,0);
 
 	LED_AddDimmer(iVal, addMode, 0);
 
@@ -1182,6 +1215,9 @@ static commandResult_t dimmer(const void *context, const char *cmd, const char *
 		int iVal = 0;
 
         ADDLOG_DEBUG(LOG_FEATURE_CMD, " dimmer (%s) received with args %s",cmd,args);
+	if (!args || args[0] == '\0') {
+		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+	}
 
 		// according to Elektroda.com users, domoticz sends following string:
 		// {"brightness":52,"state":"ON"}
@@ -1361,6 +1397,9 @@ commandResult_t LED_SetBaseColor_HSB(const void *context, const char *cmd, const
 	const char *p;
 
 	Tokenizer_TokenizeString(args, 0);
+	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 1)) {	// especially important here: if ArgsCount is 0, it would proceed to els, fetching 3 invalid values!!
+		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+	}
 	if (Tokenizer_GetArgsCount() == 1) {
 		p = args;
 		hue = atoi(p);
@@ -1561,6 +1600,9 @@ static commandResult_t lerpSpeed(const void *context, const char *cmd, const cha
 static commandResult_t cmdDimmerScale(const void *context, const char *cmd, const char *args, int cmdFlags) {
 	// Use tokenizer, so we can use variables (eg. $CH11 as variable)
 	Tokenizer_TokenizeString(args, 0);
+	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 1)) {
+		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+	}
 
 	g_brightnessScale = Tokenizer_GetArgFloat(0);
 
@@ -1650,6 +1692,9 @@ static commandResult_t setSaturation(const void *context, const char *cmd, const
 
 	// Use tokenizer, so we can use variables (eg. $CH11 as variable)
 	Tokenizer_TokenizeString(args, 0);
+	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 1)) {
+		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+	}
 
 	f = Tokenizer_GetArgFloat(0);
 
@@ -1670,6 +1715,9 @@ static commandResult_t setHue(const void *context, const char *cmd, const char *
 
 	// Use tokenizer, so we can use variables (eg. $CH11 as variable)
 	Tokenizer_TokenizeString(args, 0);
+	if (Tokenizer_CheckArgsCountAndPrintWarning(cmd, 1)) {
+		return CMD_RES_NOT_ENOUGH_ARGUMENTS;
+	}
 
 	f = Tokenizer_GetArgFloat(0);
 

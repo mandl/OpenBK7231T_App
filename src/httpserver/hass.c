@@ -487,6 +487,42 @@ HassDeviceInfo* hass_createHVAC(float min, float max, float step, const char **f
 
 	return info;
 }
+HassDeviceInfo* hass_createShutter(int index) {
+	HassDeviceInfo* info = hass_init_device_info(HASS_GARAGE, index, NULL, NULL, 0, 0);
+
+	char buffer[96];
+
+	//cJSON_AddStringToObject(info->root, "name", title);
+	//cJSON_AddStringToObject(info->root, "unique_id", title);
+	cJSON_AddStringToObject(info->root, "device_class", "garage");
+
+	if (0) {
+		sprintf(buffer, "~/shutterState%i/get", index);
+		cJSON_AddStringToObject(info->root, "state_topic", buffer);
+	}
+	sprintf(buffer, "cmnd/%s/ShutterMove%d", CFG_GetMQTTClientId(), index);
+	cJSON_AddStringToObject(info->root, "command_topic", buffer);
+
+	cJSON_AddStringToObject(info->root, "state_open", "open");
+	cJSON_AddStringToObject(info->root, "state_closed", "closed");
+	cJSON_AddStringToObject(info->root, "payload_open", "OPEN");
+	cJSON_AddStringToObject(info->root, "payload_close", "CLOSE");
+	cJSON_AddStringToObject(info->root, "payload_stop", "STOP");
+
+	if (1) {
+		sprintf(buffer, "~/shutterPos%i/get", index);
+		cJSON_AddStringToObject(info->root, "position_topic", buffer);
+		sprintf(buffer, "cmnd/%s/ShutterMove%d", CFG_GetMQTTClientId(), index);
+		cJSON_AddStringToObject(info->root, "set_position_topic", buffer);
+
+		cJSON_AddNumberToObject(info->root, "position_open", 100);
+		cJSON_AddNumberToObject(info->root, "position_closed", 0);
+	}
+
+	sprintf(info->channel, "cover/%s/config", info->unique_id);
+	return info;
+}
+
 /// @brief Initializes HomeAssistant device discovery storage with common values.
 /// @param type 
 /// @param index This is used to generate generate unique_id and name. 
@@ -636,7 +672,7 @@ HassDeviceInfo* hass_init_device_info(ENTITY_TYPE type, int index, const char* p
 	if (DRV_IsRunning("DoorSensor") == false && DRV_IsRunning("tmSensor") == false)
 #endif
 	{
-		if (!isSensor && !flagavty) {
+		if (!flagavty) {
 			cJSON_AddStringToObject(info->root, "avty_t", "~/connected");   //availability_topic, `online` value is broadcasted
 		}
 	}
@@ -863,6 +899,7 @@ HassDeviceInfo* hass_init_energy_sensor_device_info(int index, int asensdataseti
 	//in twin mode, for ix0 is last OBK_CONSUMPTION_YESTERDAY, for ix1 ,OBK_CONSUMPTION_TODAY
 	if ((index > OBK_CONSUMPTION_STORED_LAST[asensdatasetix]) && (index <= OBK_CONSUMPTION__DAILY_LAST)) return info;
 #endif
+	if (index == OBK_FREQUENCY && !BL_HasEnergySensorReadingEx(asensdatasetix, index)) return info;
 	info = hass_init_device_info(ENERGY_METER_SENSOR, index, NULL, NULL, asensdatasetix, NULL);
 
 	cJSON_AddStringToObject(info->root, "dev_cla", DRV_GetEnergySensorNamesEx(asensdatasetix,index)->hass_dev_class);   //device_class=voltage,current,power, energy, timestamp
@@ -1175,12 +1212,12 @@ HassDeviceInfo* hass_init_sensor_device_info(ENTITY_TYPE type, int channel, int 
 /// @return 
 const char* hass_build_discovery_json(HassDeviceInfo* info) {
 	if (info == NULL) {
-		addLogAdv(LOG_ERROR, LOG_FEATURE_HASS, "ERROR: someone passed NULL pointer to hass_build_discovery_json\r\n");
+		addLogAdv(LOG_ERROR, LOG_FEATURE_HASS, "ERROR: someone passed NULL pointer to hass_build_discovery_json");
 		return "";
 	}
 	int bOk = cJSON_PrintPreallocated(info->root, info->json, HASS_JSON_SIZE, 0);
 	if (bOk == false) {
-		addLogAdv(LOG_ERROR, LOG_FEATURE_HASS, "ERROR: too long JSON in hass_build_discovery_json\r\n");
+		addLogAdv(LOG_ERROR, LOG_FEATURE_HASS, "ERROR: too long JSON in hass_build_discovery_json");
 		return "";
 	}
 	return info->json;
@@ -1191,7 +1228,7 @@ const char* hass_build_discovery_json(HassDeviceInfo* info) {
 void hass_free_device_info(HassDeviceInfo* info) {
 	if (info == NULL)
 		return;
-	//addLogAdv(LOG_DEBUG, LOG_FEATURE_HASS, "hass_free_device_info \r\n");
+	//addLogAdv(LOG_DEBUG, LOG_FEATURE_HASS, "hass_free_device_info ");
 
 	if (info->root != NULL) {
 		cJSON_Delete(info->root);
